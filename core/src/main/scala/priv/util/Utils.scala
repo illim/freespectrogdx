@@ -2,6 +2,8 @@ package priv.util
 
 import java.io._
 
+import com.badlogic.gdx.Gdx
+
 object Utils {
 
   def memo[A, B](f : A => B) = {
@@ -71,8 +73,10 @@ class TVar[A <: AnyRef](richLock: RichLock) {
   }
 
   def get(): Option[A] = {
-    lock.synchronized {
-      lock.wait()
+    if (holder.isEmpty) {
+      lock.synchronized {
+        lock.wait()
+      }
     }
     holder
   }
@@ -267,4 +271,12 @@ class FuncDecorator0[A](f: () ⇒ A) extends Function0[A] {
       g(old())
     }
   }
+}
+
+class Log(x : AnyRef) {
+  val name = x.getClass.getSimpleName
+  def debug(s : String) = Gdx.app.debug(name, ts + ">" + s)
+  def info(s : String)  = Gdx.app.log(name, ts + ">" + s)
+  def error(s : String) = Gdx.app.error(name, ts + ">" + s)
+  private def ts = Thread.currentThread().getName
 }

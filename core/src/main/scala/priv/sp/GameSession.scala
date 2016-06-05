@@ -55,6 +55,7 @@ class GameSession(val server: GameServer, resources: GameResources) {
             server.waitNextCommand(c, state)
           }
         }).foreach { nextCommandOpt: Option[Option[Command]] ⇒
+        println("next command " + nextCommandOpt)
           nextCommandOpt match {
             case None ⇒ endGame(myPlayerId)
             case Some(nextCommand) ⇒

@@ -4,6 +4,8 @@ import java.io._
 import java.net._
 import java.util.Base64
 
+import priv.util.Log
+
 import collection._
 import scala.concurrent.Promise
 import priv.util.Utils.thread
@@ -12,7 +14,7 @@ import priv.sp._
 
 class NetClient(host : String, port : Int, user : String,
                 screens : Screens,
-                log : String => Unit,
+                logMsg : String => Unit,
                 setPlayerList : List[String] => Unit) {
 
   import screens._
@@ -21,9 +23,9 @@ class NetClient(host : String, port : Int, user : String,
   val out     = socket.getOutputStream()
   val in      = socket.getInputStream()
   val pout    = new PrintWriter(out, true)
-  val reader  = new BufferedReader(new InputStreamReader(in))
   val pending = mutable.HashMap.empty[Int, Promise[Message]]
   val messageQueue = new java.util.concurrent.LinkedBlockingQueue[Any]
+  val log     = new Log(this)
   def kryo    = GameKryoInstantiator.kryo
 
   var running = true
@@ -31,7 +33,10 @@ class NetClient(host : String, port : Int, user : String,
     while (running) {
       getMessage() foreach { message =>
         if (message.header.answerId > 0) {
-          pending(message.header.answerId).success(message) // TODO useless?
+          pending.get(message.header.answerId) match {
+            case Some(prom) => prom.success(message)
+            case None => handle(message)
+          }
         } else {
           handle(message)
         }
@@ -41,9 +46,10 @@ class NetClient(host : String, port : Int, user : String,
   }
 
   def handle( message : Message ) = {
+    log.debug("Handle " + message)
     message.header.messageType match {
       case MessageType.Welcome =>
-        message.body foreach ( x => log(new String(x)) )
+        message.body foreach ( x => logMsg(new String(x)) )
         send(Message(Header(MessageType.Name), Some(user.getBytes)))
       case MessageType.ListPlayers =>
         message.body foreach { bytes =>
@@ -54,22 +60,33 @@ class NetClient(host : String, port : Int, user : String,
         val seed = GameSeed.create(gameResources)
         // send the seed to the opponent
         proxyMessage(seed)
-        gameScreen.select()
-        val opp = new RemoteOpponent(gameResources, this, "remote", opponent, owner, seed )
-        new RemoteGameScreenContext(gameScreen, opp)
+        screenResources.beforeProcess.invoke {
+          gameScreen.select()
+          val opp = new RemoteOpponent(gameResources, this, "remote", opponent, owner, seed)
+          new RemoteGameScreenContext(gameScreen, opp)
+        }
       case MessageType.ExitDuel =>
-        gameScreen.returnToStart()
+        screenResources.beforeProcess.invoke {
+          gameScreen.returnToStart()
+        }
       case MessageType.Proxy =>
         message.body foreach { bytes =>
           val pMessage = kryo fromBytes bytes
           pMessage match {
             case seed : GameSeed =>
-              val opp = new RemoteOpponent(gameResources, this, "remote", owner, owner, seed )
-              new RemoteGameScreenContext(gameScreen, opp)
+              screenResources.beforeProcess.invoke {
+                gameScreen.select()
+                val opp = new RemoteOpponent(gameResources, this, "remote", owner, owner, seed)
+                new RemoteGameScreenContext(gameScreen, opp)
+              }
             case _ =>
+              log.debug("message " + pMessage)
               messageQueue put pMessage
+              log.debug("message " + pMessage + " enqueued")
           }
         }
+      case MessageType.RequestFailed =>
+        logMsg("request failed")
     }
   }
 
@@ -86,7 +103,7 @@ class NetClient(host : String, port : Int, user : String,
   }
 
   def getMessage() : Option[Message] = {
-    Header.fromStr(reader.readLine()) map { header =>
+    Header.fromStr(readLine()) map { header =>
       if (header.length > 0) {
         val bytes = new Array[Byte](header.length)
         in read bytes
@@ -95,10 +112,20 @@ class NetClient(host : String, port : Int, user : String,
     }
   }
 
+  def readLine() : String = {
+    var result = ""
+    var c = in.read()
+    while (c != -1 && c.toChar != '\n') {
+      result += c.toChar
+      c = in.read()
+    }
+    result
+  }
+
   def release() {
     running = false
     socket.close()
-    log("Disconnected")
+    logMsg("Disconnected")
     setPlayerList(Nil)
     messageQueue.clear()
     pending.clear()

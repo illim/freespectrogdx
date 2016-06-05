@@ -3,6 +3,7 @@ package com.mygdx.game.net
 import priv.sp._
 import priv.util._
 
+import priv.util.Utils._
 object GameSeed {
 
   def create(resources : GameResources) = {
@@ -29,13 +30,16 @@ class RemoteOpponent(
   val seed      = gameSeed.seed
   val initState = gameSeed.gameState
   val desc      = gameSeed.desc
+  val log       = new Log(this)
 
   def submitCommand(commandOption: Option[Command]) : Unit = {
     client.proxyMessage(commandOption)
   }
   
   def waitNextCommand(c: TVar[Option[Option[Command]]], state: GameState) : Unit = {
+    log.debug("wait next command " + Thread.currentThread().getName)
     val msg = client.messageQueue.take()
+    log.debug("taken " + msg + ", " +  Thread.currentThread().getName)
     msg match {
       case commandOption : Option[Command] => c set Some(commandOption)
       case _ => println("Unknown msg " + msg)

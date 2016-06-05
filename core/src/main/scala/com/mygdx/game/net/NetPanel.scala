@@ -28,19 +28,29 @@ class NetPanel(
 
   buttons.connectButton addListener onClick {
     screenResources.clientOption foreach { client => client.release()  }
-    val client = new NetClient(
-      host.getText, port.getText.toInt, name.getText,
-      screens,
-      logs.appendText, setPlayerList)
-    screenResources.clientOption = Some(client)
+    try {
+      val client = new NetClient(
+        host.getText, port.getText.toInt, name.getText,
+        screens,
+        logText, setPlayerList)
+      screenResources.clientOption = Some(client)
+      logText("Connected")
+    } catch { case e : Exception =>
+      logText(e.getMessage)
+      screens.lastE = Some(e)
+    }
   }
 
   buttons.searchButton addListener onClick {
     screenResources.clientOption foreach { client =>
-      logs.appendText("Searching...")
+      logText("Searching...")
       client send Message(Header(MessageType.RequestDuel))
     }
   }
 
   def setPlayerList(players : List[String]) = playerList setText players.mkString("\n")
+
+  def logText(s : String) = {
+    logs.appendText(s + "\n")
+  }
 }
