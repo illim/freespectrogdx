@@ -1,12 +1,7 @@
 package com.mygdx.game
 
-import java.io.File
-import java.net.URL
-import java.nio.file.Paths
 import java.util.Properties
-
 import com.badlogic.gdx.Gdx
-import com.typesafe.config.Config
 import priv.util.Utils
 
 object Storage {
@@ -18,9 +13,6 @@ object Storage {
 import Storage._
 
 class Storage {
-
-  val assetPath     = Gdx.files external ".freespectro"
-  val themesPath    = Gdx.files external ".freespectro/themes"
   val userPrefsPath = Gdx.files external ".freespectro/user.prefs"
   val userPrefs     = new Properties()
   val checksum      = Utils.getChecksum() // store this? to check if changed to redownload assets (or try to check assets?)
@@ -33,14 +25,6 @@ class Storage {
   if (userPrefsPath.exists()) {
     userPrefs.load(userPrefsPath.reader())
     initVars()
-  }
-
-  def fetchAssets(config : Config) : Unit = {
-    val themePath = themesPath.file().getCanonicalPath + File.separator + cardTheme
-    if (! java.nio.file.Files.exists(Paths get themePath)) {
-      downloadAndUnzip(new URL(config getString "imagepack.backgrounds"), "backgrounds.zip", assetPath.file().getCanonicalPath)
-      downloadAndUnzip(new URL(config getString ("imagepack." + cardTheme)), cardTheme+".zip", themePath)
-    }
   }
 
   def persist(m : Map[String, String]) : Unit = {
@@ -57,15 +41,4 @@ class Storage {
     }
   }
 
-  private def downloadAndUnzip(url : URL, name : String, targetFolder : String) : Unit = {
-    val tempFolder = assetPath.file().getCanonicalPath + File.separator + "tmp"
-    val targetDownload = tempFolder + File.separator + name
-    val targetFile = new File(targetDownload)
-    if (! targetFile.exists()) {
-      targetFile.getParentFile.mkdirs()
-      println("Downloading " + url + " to " + targetDownload)
-      Utils.download(url, name, targetDownload)
-    }
-    Utils.unzip(targetDownload, targetFolder)
-  }
 }

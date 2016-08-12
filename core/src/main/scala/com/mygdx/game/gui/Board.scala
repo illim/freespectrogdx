@@ -57,12 +57,12 @@ class Background(resources :ScreenResources) {
   def setBackground(house  : House) = {
     val backgrounds = for {
       filename  <- exts.map(ext => house.name.toLowerCase + ext)
-      file = Gdx.files.external(".freespectro/backgrounds/" + filename)
+      file = Gdx.files.external(".freespectro/files/backgrounds/" + filename)
       if file.exists()
     } yield file
 
     background.clear()
-    val file = (Random shuffle backgrounds.toList).headOption getOrElse Gdx.files.external(".freespectro/backgrounds/default.jpg")
+    val file = (Random shuffle backgrounds.toList).headOption getOrElse Gdx.files.external(".freespectro/files/backgrounds/default.jpg")
     val texture = new Texture(file)
     val image = new Image(texture)
     image setY (800 - image.getHeight)

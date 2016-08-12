@@ -24,11 +24,10 @@ import scala.util.control.NonFatal
 class ScreenResources(val storage : Storage) extends GraphicResourceBase {
 
   var config   = ConfigFactory.load()
-  storage fetchAssets config
   val stage    = new Stage()
   val batch    = stage.getBatch
   val renderer = new ShapeRenderer()
-  val atlas    = new TextureAtlas(Gdx.files.external(".freespectro/themes/"+storage.cardTheme+"/pack/images.pack.atlas"))
+  val atlas    = new TextureAtlas(Gdx.files.external(".freespectro/files/"+storage.cardTheme+"/pack/images.pack.atlas"))
 
   val commonSkin = loadSkin("font3")
   var skin     = if (I18n.isRussian) commonSkin else loadSkin("font")
