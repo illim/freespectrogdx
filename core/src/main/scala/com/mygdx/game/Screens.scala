@@ -157,11 +157,13 @@ class GameScreen(val screens : Screens) extends ScreenAdapter {
 
   def returnToStart() = {
     resetScreen(())
+    screenResources.removeGameSystems()
     lobbyScreen.select()
   }
 
   def select() : Unit = {
     resetScreen(())
+    screenResources.initGameSystems()
     game setScreen this
   }
 

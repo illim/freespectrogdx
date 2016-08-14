@@ -40,12 +40,6 @@ class ScreenResources(val storage : Storage) extends GraphicResourceBase {
   val timedSystem    = new TimedSystem(engine)
   var clientOption   = Option.empty[NetClient]
 
-  engine addSystem scriptSystem
-  engine addSystem timedSystem
-  engine addSystem particleSystem
-  engine addSystem slotSystem
-  engine addSystem renderSystem
-
   val shapes = new ShapeRenderer()
 
   val beforeProcess = new BeforeProcess
@@ -58,6 +52,22 @@ class ScreenResources(val storage : Storage) extends GraphicResourceBase {
     stage.clear()
     engine.removeAllEntities()
     Gdx.input setInputProcessor stage
+  }
+
+  def initGameSystems(): Unit = {
+    engine addSystem scriptSystem
+    engine addSystem timedSystem
+    engine addSystem particleSystem
+    engine addSystem slotSystem
+    engine addSystem renderSystem
+  }
+
+  def removeGameSystems() : Unit = {
+    engine removeSystem scriptSystem
+    engine removeSystem timedSystem
+    engine removeSystem particleSystem
+    engine removeSystem slotSystem
+    engine removeSystem renderSystem
   }
 
   def addEndMessage(msg : String) = beforeProcess invoke {
