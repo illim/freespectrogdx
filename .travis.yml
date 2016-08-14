@@ -1,6 +1,17 @@
 language: java
 
+jdk:
+  - oraclejdk8
+
 before_install:
   - chmod +x gradlew
 
 script: ./gradlew desktop:dist
+
+deploy:
+  provider: releases
+  api_key: ${GITHUB_TOKEN}
+  file: desktop/build/libs/freespectrogdx.jar
+  skip_cleanup: true
+  on:
+    tags: true
