@@ -1,8 +1,10 @@
 package com.mygdx.game.net
 
 import com.badlogic.gdx.Gdx
+import com.badlogic.gdx.scenes.scene2d.InputEvent
 import com.badlogic.gdx.scenes.scene2d.ui.TextField.TextFieldListener
 import com.badlogic.gdx.scenes.scene2d.ui.{List => UiList, _}
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener
 import com.mygdx.game._
 import com.mygdx.game.effects.SoundEntity
 import com.mygdx.game.gui._
@@ -16,8 +18,8 @@ class NetPanel(
   import screenResources.{skin2 => skin}
 
   val name = new TextField(screens.storage.userName getOrElse System.getProperty("user.name"), skin)
-  val host = new TextField("172.99.78.51", skin)
-  val port = new TextField("12345", skin)
+  val host = new TextField(screenResources.storage.server, skin)
+  val port = new TextField(screenResources.storage.serverPort, skin)
   val logs = new TextArea("", screenResources.commonSkin)
   val chat = new TextField("" , skin)
   val nbRows = 20
@@ -36,10 +38,21 @@ class NetPanel(
   table.row()
   table.add(chat).colspan(2).fillX().pad(5)
   table.row()
-  table.add(new Label("(Request or accept a duel by sending: /duel playername)", skin))
+  table.add(new Label(I18n("duelrequest.tooltip"), skin))
 
   val panel = table
   table.pad(5).bottom().pack()
+
+  playerList.addListener(new ClickListener(){ self =>
+    override def clicked(event: InputEvent, x: Float, y: Float): Unit = {
+      if (self.getTapCount == 2) {
+        val name = playerList.getSelected
+        if (name!= null) {
+          requestDuel(name.name)
+        }
+      }
+    }
+  })
 
   buttons.getButton(I18n("button.connect")) addListener onClick {
     screenResources.clientOption foreach { client => client.release()  }
@@ -49,7 +62,10 @@ class NetPanel(
         screens,
         logText, logDuelRequest, setPlayerList)
       screenResources.clientOption = Some(client)
-      screenResources.storage persist Map(Storage.USER_NAME -> client.user)
+      screenResources.storage persist Map(
+        Storage.USER_NAME -> client.user,
+        Storage.SERVER -> host.getText,
+        Storage.SERVER_PORT -> port.getText)
       logText("Connected")
     } catch { case e : Exception =>
       logText(e.getMessage)
@@ -66,19 +82,26 @@ class NetPanel(
             val text = chat.getText
             if (text.startsWith("/duel ")) {
               val name = text.replace("/duel ", "")
-
-              logText("Requesting a duel to " + name + "...")
-              playerList.getItems.toArray().find(_.name == name && client.user != name) match {
-                case None => logText(name + " not found")
-                case Some(p) =>
-                  client send Message(Header(MessageType.RequestDuel), Some(p.id.getBytes))
-              }
+              requestDuel(name)
             } else {
               client proxyMessage ChatMessage(client.user + ": " + text)
             }
             chat setText ""
         }
       }
+    }
+  }
+
+  def requestDuel(name : String) = {
+    logText("Requesting a duel to " + name + "...")
+    screenResources.clientOption match {
+      case None => logText("Not connected")
+      case Some(client) =>
+        playerList.getItems.toArray().find(_.name == name && client.user != name) match {
+          case None => logText(name + " not found")
+          case Some(p) =>
+            client send Message(Header(MessageType.RequestDuel), Some(p.id.getBytes))
+        }
     }
   }
 
