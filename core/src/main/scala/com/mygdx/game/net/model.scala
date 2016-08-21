@@ -1,5 +1,6 @@
 package com.mygdx.game.net
 
+import java.nio.charset.StandardCharsets
 import java.util.Base64
 
 object MessageType extends Enumeration {
@@ -35,7 +36,7 @@ object PlayerStatus extends Enumeration {
 object PlayerInfo {
   def decode(p : String) = {
     val name :: status :: id :: _ = p.split(":").toList
-    PlayerInfo(new String(Base64.getDecoder() decode name), id, PlayerStatus(status.toInt))
+    PlayerInfo(new String(Base64.getDecoder() decode name, StandardCharsets.UTF_8), id, PlayerStatus(status.toInt))
   }
 }
 case class PlayerInfo(name : String, id : String, status : PlayerStatus.Value) {

@@ -7,9 +7,10 @@ import collection._
 import scala.concurrent.Promise
 import scala.util.{Failure, Success}
 import priv.util.Utils.thread
-import com.mygdx.game.{GameInit, RemoteGameScreenContext, Screens}
+import com.mygdx.game.{RemoteGameScreenContext, Screens}
 import priv.sp._
 import priv.util.Log
+import java.nio.charset.StandardCharsets
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -52,8 +53,8 @@ class NetClient(host : String, port : Int, val user : String,
     log.debug("Handle " + message)
     message.header.messageType match {
       case MessageType.Welcome =>
-        message.body foreach ( x => logMsg(new String(x)) )
-        send(Message(Header(MessageType.Name), Some(user.getBytes)))
+        message.body foreach ( x => logMsg(new String(x, StandardCharsets.UTF_8)) )
+        send(Message(Header(MessageType.Name), Some(user.getBytes(StandardCharsets.UTF_8))))
       case MessageType.ListPlayers =>
         message.body foreach { bytes =>
           setPlayerList(new String(bytes).split(";").toList.map(PlayerInfo.decode))
@@ -90,7 +91,7 @@ class NetClient(host : String, port : Int, val user : String,
         }
       case MessageType.RequestDuel =>
         message.body foreach { bytes =>
-          logDuelRequest(new String(bytes))
+          logDuelRequest(new String(bytes, StandardCharsets.UTF_8))
         }
       case MessageType.Proxy =>
         message.body foreach { bytes =>
@@ -131,9 +132,10 @@ class NetClient(host : String, port : Int, val user : String,
 
   def send(message : Message) = {
     val header = message.header.copy(length = message.body.map(_.length) getOrElse 0)
-    pout.println(header.toStr)
+    out.write((header.toStr + "\n").getBytes(StandardCharsets.UTF_8))
     message.body foreach out.write
     out.flush()
+    log.debug("send " + header + " " + message.body)
   }
 
   def proxify(m : Any) : Message = {
