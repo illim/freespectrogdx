@@ -23,6 +23,8 @@ class NetClient(host : String, port : Int, val user : String,
   import screens._
 
   val socket  = new Socket(host, port)
+  Option(System.getenv("SO_TIMEOUT")) foreach { ts => socket.setSoTimeout(ts.toInt) }
+  Option(System.getenv("KEEP_ALIVE")) foreach { _ => socket.setKeepAlive(true) }
   val out     = socket.getOutputStream()
   val in      = socket.getInputStream()
   val pout    = new PrintWriter(out, true)
