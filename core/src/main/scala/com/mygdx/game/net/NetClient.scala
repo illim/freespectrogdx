@@ -16,13 +16,15 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 class NetClient(host : String, port : Int, val user : String,
                 screens : Screens,
-                logMsg : String => Unit,
+                logMsg : (String, Boolean) => Unit,
                 logDuelRequest : String => Unit,
                 setPlayerList : List[PlayerInfo] => Unit) {
 
   import screens._
 
   val socket  = new Socket(host, port)
+  Option(System.getenv("SO_TIMEOUT")) foreach { ts => socket.setSoTimeout(ts.toInt) }
+  Option(System.getenv("KEEP_ALIVE")) foreach { _ => socket.setKeepAlive(true) }
   val out     = socket.getOutputStream()
   val in      = socket.getInputStream()
   val pout    = new PrintWriter(out, true)
@@ -53,7 +55,7 @@ class NetClient(host : String, port : Int, val user : String,
     log.debug("Handle " + message)
     message.header.messageType match {
       case MessageType.Welcome =>
-        message.body foreach ( x => logMsg(new String(x, StandardCharsets.UTF_8)) )
+        message.body foreach ( x => logMsg(new String(x, StandardCharsets.UTF_8), true) )
         send(Message(Header(MessageType.Name), Some(user.getBytes(StandardCharsets.UTF_8))))
       case MessageType.ListPlayers =>
         message.body foreach { bytes =>
@@ -63,12 +65,12 @@ class NetClient(host : String, port : Int, val user : String,
         // ask opponent name and house preferences
         val prom = proxyAsk(new AskOpponentInfo)
         prom.future onComplete {
-          case Failure(t) => logMsg(t.getMessage) ; t.printStackTrace()
+          case Failure(t) => logMsg(t.getMessage, true) ; t.printStackTrace()
           case Success(OpponentInfo(oppName, oppHouses, oppChecksum)) =>
             if (oppChecksum != screenResources.storage.checksum) {
               val msg = "Checksum mismatch " + screenResources.storage.checksum + "/" + oppChecksum
               log.error(msg)
-              logMsg(msg)
+              logMsg(msg, true)
               Thread.sleep(1000)
             }
             messageQueue.clear()
@@ -103,7 +105,7 @@ class NetClient(host : String, port : Int, val user : String,
                 val opp = new RemoteOpponent(gameResources, this, seed.name, owner, owner, seed)
                 setGame(new RemoteGameScreenContext(gameScreen, opp))
               }
-            case ChatMessage(chatMsg) => logMsg(chatMsg)
+            case ChatMessage(chatMsg) => logMsg(chatMsg, false)
             case ProxyAsk(msg, id) =>
                 msg match {
                   case _ : AskOpponentInfo =>
@@ -121,7 +123,7 @@ class NetClient(host : String, port : Int, val user : String,
           }
         }
       case MessageType.RequestFailed =>
-        logMsg("request failed")
+        logMsg("request failed", false)
     }
   }
 
@@ -176,7 +178,7 @@ class NetClient(host : String, port : Int, val user : String,
   def release() {
     running = false
     socket.close()
-    logMsg("Disconnected")
+    logMsg("Disconnected", true)
     setPlayerList(Nil)
     messageQueue put GameSeed.PoisonPill
     messageQueue.clear()

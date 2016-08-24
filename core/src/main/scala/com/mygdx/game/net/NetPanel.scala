@@ -66,9 +66,9 @@ class NetPanel(
         Storage.USER_NAME -> client.user,
         Storage.SERVER -> host.getText,
         Storage.SERVER_PORT -> port.getText)
-      logText("Connected")
+      logText("Connected", true)
     } catch { case e : Exception =>
-      logText(e.getMessage)
+      logText(e.getMessage, true)
       screens.lastE = Some(e)
     }
   }
@@ -77,7 +77,7 @@ class NetPanel(
     override def keyTyped(textField: TextField, c: Char) : Unit = {
       if (c == '\r' || c == '\n') {
         screenResources.clientOption match {
-          case None => logText("Not connected")
+          case None => logText("Not connected", true)
           case Some(client) =>
             val text = chat.getText
             if (text.startsWith("/duel ")) {
@@ -93,12 +93,12 @@ class NetPanel(
   }
 
   def requestDuel(name : String) = {
-    logText("Requesting a duel to " + name + "...")
+    logText("Requesting a duel to " + name + "...", true)
     screenResources.clientOption match {
-      case None => logText("Not connected")
+      case None => logText("Not connected", true)
       case Some(client) =>
         playerList.getItems.toArray().find(_.name == name && client.user != name) match {
-          case None => logText(name + " not found")
+          case None => logText(name + " not found", true)
           case Some(p) =>
             client send Message(Header(MessageType.RequestDuel), Some(p.id.getBytes))
         }
@@ -109,15 +109,15 @@ class NetPanel(
     playerList.setItems(players : _*)
   }
 
-  def logText(s : String) = {
+  def logText(s : String, silent : Boolean) = {
     logs.appendText(s + "\n")
-    playSound("sounds/chat.mp3")
+    if (!silent) playSound("sounds/chat.mp3")
   }
 
   def logDuelRequest(id : String) = {
     playerList.getItems.toArray().find(_.id == id) match {
-      case None => logText("duel request from unknown id " + id)
-      case Some(p) => logText(p.name + " invite you to a duel")
+      case None => logText("duel request from unknown id " + id, true)
+      case Some(p) => logText(p.name + " invite you to a duel", true)
     }
     playSound("sounds/duel-request.mp3")
   }

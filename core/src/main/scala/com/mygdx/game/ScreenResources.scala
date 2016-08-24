@@ -91,7 +91,12 @@ class ScreenResources(val storage : Storage) extends GraphicResourceBase {
     } catch { case NonFatal(t) => t.printStackTrace() }
   }
 
+  sys.addShutdownHook({
+    disconnectIfNeeded()
+  })
+
   def dispose(): Unit ={
+    disconnectIfNeeded()
     effectResources.shaders.dispose()
     effectResources.particles.dispose()
     stage.dispose()
