@@ -124,7 +124,7 @@ object Utils {
 class TVar[A <: AnyRef](val richLock: RichLock) {
   import richLock.lock
 
-  private var holder = Option.empty[A]
+  @volatile private var holder = Option.empty[A]
   def set(a: A) {
     holder = Some(a)
     lock.synchronized {
